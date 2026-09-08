@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cozy Kitchen Explorer - Ultra Textures</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            user-select: none;
+            background-color: #050508;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        #blocker {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(5, 7, 12, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        #instructions {
+            text-align: center;
+            background: rgba(20, 25, 38, 0.85);
+            backdrop-filter: blur(16px);
+            padding: 40px 50px;
+            border-radius: 20px;
+            border: 1px solid rgba(224, 169, 109, 0.3);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(224, 169, 109, 0.15);
+            max-width: 560px;
+            width: 90%;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #f3a953;
+            font-size: 2.3rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(243, 169, 83, 0.4);
+            font-weight: 800;
+        }
+
+        p {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: #d1d5db;
+        }
+
+        .key {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-family: monospace;
+            font-weight: bold;
+            color: #f3a953;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+
+        .click-prompt {
+            margin-top: 30px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 1px;
+            animation: pulse 1.8s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1.02); }
+            100% { opacity: 0.5; transform: scale(0.98); }
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 5;
+            transition: transform 0.15s ease;
+        }
+
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 2px;
+            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+        }
+
+        #crosshair::before {
+            top: 5px;
+            left: 0;
+            width: 12px;
+            height: 2px;
+        }
+
+        #crosshair::after {
+            top: 0;
+            left: 5px;
+            width: 2px;
+            height: 12px;
+        }
+
+        #crosshair.active::before, #crosshair.active::after {
+            background: #2ecc71;
+            box-shadow: 0 0 8px #2ecc71;
+        }
+
+        #interaction-prompt {
+            position: absolute;
+            top: 56%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 1.05rem;
+            font-weight: 600;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+            display: none;
+            z-index: 6;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+        #ui-panel {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            color: #f3a953;
+            font-weight: 600;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(12px);
+            padding: 14px 22px;
+            border-radius: 12px;
+            border: 1px solid rgba(243, 169, 83, 0.3);
+            pointer-events: none;
+            font-size: 0.95rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            letter-spacing: 0.5px;
+        }
+
+        #game-banner {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            text-align: center;
+            display: none;
+            z-index: 8;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            max-width: 80%;
+        }
+
+        .banner-success {
+            background: rgba(39, 174, 96, 0.9);
+            color: white;
+            border: 1px solid #2ecc71;
+        }
+
+        .banner-fail {
+            background: rgba(192, 57, 43, 0.9);
+            color: white;
+            border: 1px solid #e74c3c;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    <div id="crosshair"></div>
+    <div id="interaction-prompt">[CLICK] Pick up Ingredient</div>
+    <div id="game-banner"></div>
+
+    <div id="blocker">
+        <div id="instructions">
+            <h1>Gourmet Kitchen</h1>
+            <p>Craft a 5-Ingredient Masterpiece! Inspect the three ingredients on the island counter (<b>1 Fresh, 2 Spoiled</b>).</p>
+            <p>Pick up fresh ingredients and drop them into the boiling pot. Avoid spoiled ones!</p>
+            <br>
+            <p>
+                <span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> - Move<br>
+                <span class="key">MOUSE</span> - Look Around<br>
+                <span class="key">LEFT CLICK</span> - Interact / Pick / Place<br>
+                <span class="key">R</span> - Restart Game<br>
+                <span class="key">ESC</span> - Pause
+            </p>
+            <div class="click-prompt">[ CLICK TO START COOKING ]</div>
+        </div>
+    </div>
+
+    <div id="ui-panel">
+        PROGRESS: <span id="progress-display">0 / 5</span> Fresh Ingredients &nbsp;|&nbsp; HELD: <span id="held-display" style="color: #fff;">None</span>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // --- SCENE & CAMERA SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0c0e14);
+        scene.fog = new THREE.FogExp2(0x0c0e14, 0.032);
+
+        const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 4.7, 3.8);
+
+        // --- HIGH GRAPHICS RENDERER ---
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.15;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+
+        function applyTextureSettings(texture, repeatX = 1, repeatY = 1) {
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(repeatX, repeatY);
+            texture.anisotropy = maxAnisotropy;
+            texture.generateMipmaps = true;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            return texture;
+        }
+
+        // --- ATMOSPHERIC LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0xffedd8, 0.45);
+        scene.add(ambientLight);
+
+        const pendantLight = new THREE.SpotLight(0xffd5a1, 2.5, 18, Math.PI / 2.8, 0.45, 1);
+        pendantLight.position.set(0, 7.2, 0.5);
+        pendantLight.target.position.set(0, 2.5, 0.5);
+        pendantLight.castShadow = true;
+        pendantLight.shadow.mapSize.width = 2048;
+        pendantLight.shadow.mapSize.height = 2048;
+        pendantLight.shadow.bias = -0.0001;
+        scene.add(pendantLight);
+        scene.add(pendantLight.target);
+
+        const windowLight = new THREE.DirectionalLight(0x91c4f2, 1.4);
+        windowLight.position.set(-12, 7, -2);
+        windowLight.castShadow = true;
+        windowLight.shadow.mapSize.width = 2048;
+        windowLight.shadow.mapSize.height = 2048;
+        scene.add(windowLight);
+
+        const cabinetLight = new THREE.PointLight(0xffaa55, 0.9, 8);
+        cabinetLight.position.set(-1, 5.0, -6.0);
+        scene.add(cabinetLight);
+
+        const burnerLight = new THREE.PointLight(0xff3300, 0.6, 3);
+        burnerLight.position.set(0, 2.85, 0.5);
+        scene.add(burnerLight);
+
+        // ==========================================
+        // --- HIGH-FIDELITY PROCEDURAL TEXTURES ---
+        // ==========================================
+
+        // 1. ORGANIC MARBLE (1024x1024 Multi-pass noise veins)
+        function createMarbleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            const bgGrad = ctx.createLinearGradient(0, 0, 1024, 1024);
+            bgGrad.addColorStop(0, '#f8f6f0');
+            bgGrad.addColorStop(0.5, '#ede8df');
+            bgGrad.addColorStop(1, '#f3efe7');
+            ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, 1024, 1024);
+
+            for (let i = 0; i < 40; i++) {
+                const x = Math.random() * 1024, y = Math.random() * 1024, r = 100 + Math.random() * 200;
+                const cloud = ctx.createRadialGradient(x, y, 0, x, y, r);
+                cloud.addColorStop(0, 'rgba(180, 172, 160, 0.08)');
+                cloud.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = cloud; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+            }
+
+            function drawVein(startX, startY, length, angle, width, opacity) {
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                let curX = startX, curY = startY;
+                for (let i = 0; i < length; i++) {
+                    angle += (Math.random() - 0.5) * 0.4;
+                    curX += Math.cos(angle) * 8;
+                    curY += Math.sin(angle) * 8;
+                    ctx.lineTo(curX, curY);
+                }
+                ctx.strokeStyle = `rgba(90, 82, 75, ${opacity})`;
+                ctx.lineWidth = width;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+
+            for (let i = 0; i < 16; i++) {
+                drawVein(Math.random() * 1024, Math.random() * 1024, 40 + Math.random() * 60, Math.random() * Math.PI * 2, 3 + Math.random() * 4, 0.18);
+                drawVein(Math.random() * 1024, Math.random() * 1024, 20 + Math.random() * 40, Math.random() * Math.PI * 2, 1 + Math.random() * 2, 0.35);
+            }
+
+            return applyTextureSettings(new THREE.CanvasTexture(canvas));
+        }
+
+        // 2. REALISTIC SLATE FLOOR TILES & BUMP (1024x1024)
+        function createTileTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#0f1218'; ctx.fillRect(0, 0, 1024, 1024);
+
+            const tileSize = 256; const grout = 8;
+            for (let x = 0; x < 1024; x += tileSize) {
+                for (let y = 0; y < 1024; y += tileSize) {
+                    const tileGrad = ctx.createLinearGradient(x, y, x + tileSize, y + tileSize);
+                    const shade = 28 + Math.floor(Math.random() * 12);
+                    tileGrad.addColorStop(0, `rgb(${shade + 8}, ${shade + 10}, ${shade + 15})`);
+                    tileGrad.addColorStop(1, `rgb(${shade - 5}, ${shade - 3}, ${shade})`);
+                    ctx.fillStyle = tileGrad;
+                    ctx.fillRect(x + grout/2, y + grout/2, tileSize - grout, tileSize - grout);
+
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+                    for (let f = 0; f < 80; f++) {
+                        ctx.fillRect(x + grout + Math.random() * (tileSize - grout * 2), y + grout + Math.random() * (tileSize - grout * 2), 2 + Math.random() * 4, 2 + Math.random() * 4);
+                    }
+                }
+            }
+            return applyTextureSettings(new THREE.CanvasTexture(canvas), 4, 4);
+        }
+
+        function createTileBumpMap() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 1024, 1024);
+
+            const tileSize = 256; const grout = 12;
+            for (let x = 0; x < 1024; x += tileSize) {
+                for (let y = 0; y < 1024; y += tileSize) {
+                    ctx.fillStyle = '#d0d0d0';
+                    ctx.fillRect(x + grout/2, y + grout/2, tileSize - grout, tileSize - grout);
+                    ctx.fillStyle = '#101010';
+                    ctx.fillRect(x, y, 1024, grout/2);
+                    ctx.fillRect(x, y, grout/2, 1024);
+                }
+            }
+            return applyTextureSettings(new THREE.CanvasTexture(canvas), 4, 4);
+        }
+
+        // 3. ORGANIC WOOD GRAIN
+        function createWoodTexture(isDark = true) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            const baseColor = isDark ? '#1a2230' : '#8c532b';
+            ctx.fillStyle = baseColor; ctx.fillRect(0, 0, 1024, 1024);
+
+            const grainColor = isDark ? 'rgba(8, 12, 18, 0.4)' : 'rgba(60, 30, 10, 0.35)';
+            const ringColor = isDark ? 'rgba(5, 8, 12, 0.25)' : 'rgba(50, 25, 8, 0.22)';
+
+            ctx.fillStyle = grainColor;
+            for (let x = 0; x < 1024; x += 2) {
+                const waveOffset = Math.sin(x * 0.015) * 40 + Math.cos(x * 0.005) * 20;
+                for (let y = 0; y < 1024; y += 8) {
+                    if (Math.random() > 0.3) {
+                        ctx.fillRect(x, y + waveOffset, 1 + Math.random(), 4 + Math.random() * 12);
+                    }
+                }
+            }
+
+            ctx.strokeStyle = ringColor;
+            ctx.lineWidth = 4;
+            for (let k = 0; k < 3; k++) {
+                const kx = Math.random() * 1024, ky = Math.random() * 1024;
+                for (let r = 20; r < 350; r += 25) {
+                    ctx.beginPath();
+                    ctx.ellipse(kx, ky, r, r * 0.35, Math.PI / 4, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+
+            return applyTextureSettings(new THREE.CanvasTexture(canvas));
+        }
+
+        function createWoodBumpMap() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 1024, 1024);
+
+            ctx.fillStyle = '#303030';
+            for (let x = 0; x < 1024; x += 3) {
+                for (let y = 0; y < 1024; y += 12) {
+                    if (Math.random() > 0.4) {
+                        ctx.fillRect(x, y, 1.5, 8 + Math.random() * 10);
+                    }
+                }
+            }
+            return applyTextureSettings(new THREE.CanvasTexture(canvas));
+        }
+
+        // 4. FINE WOVEN FABRIC RUG
+        function createRugTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#a84e32'; ctx.fillRect(0, 0, 1024, 1024);
+
+            ctx.strokeStyle = '#ebd6b7'; ctx.lineWidth = 14;
+            for (let i = -1024; i < 2048; i += 120) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + 1024, 1024); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(i, 1024); ctx.lineTo(i + 1024, 0); ctx.stroke();
+            }
+
+            ctx.fillStyle = 'rgba(10, 5, 0, 0.12)';
+            for (let x = 0; x < 1024; x += 4) {
+                ctx.fillRect(x, 0, 2, 1024);
+            }
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            for (let y = 0; y < 1024; y += 4) {
+                ctx.fillRect(0, y, 1024, 2);
+            }
+            return applyTextureSettings(new THREE.CanvasTexture(canvas));
+        }
+
+        // 5. MICRO-BRUSHED METAL
+        function createBrushedMetalTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#d5d5d5'; ctx.fillRect(0, 0, 1024, 1024);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+            for (let i = 0; i < 3000; i++) {
+                ctx.fillRect(0, Math.random() * 1024, 1024, 1 + Math.random() * 1.5);
+            }
+            return applyTextureSettings(new THREE.CanvasTexture(canvas));
+        }
+
+        // 6. WINDOW VIEW
+        function createWindowViewTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            const grad = ctx.createLinearGradient(0, 0, 0, 1024);
+            grad.addColorStop(0, '#3b82c6');
+            grad.addColorStop(0.55, '#f3b07c');
+            grad.addColorStop(1, '#f39c12');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, 1024, 1024);
+
+            const sunGlow = ctx.createRadialGradient(750, 450, 0, 750, 450, 250);
+            sunGlow.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            sunGlow.addColorStop(0.3, 'rgba(255, 230, 180, 0.8)');
+            sunGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = sunGlow; ctx.beginPath(); ctx.arc(750, 450, 250, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#1e382b';
+            for (let i = 0; i < 20; i++) {
+                ctx.beginPath();
+                ctx.arc(i * 60, 850 + Math.sin(i) * 30, 120 + Math.random() * 40, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            return applyTextureSettings(new THREE.CanvasTexture(canvas));
+        }
+
+        // 7. ORGANIC DECAY & MOLD TEXTURE
+        function createRottenTexture(baseColorHex, moldColorHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = baseColorHex; ctx.fillRect(0, 0, 512, 512);
+
+            for (let i = 0; i < 18; i++) {
+                const rx = Math.random() * 512, ry = Math.random() * 512, rad = 20 + Math.random() * 50;
+                const rotGrad = ctx.createRadialGradient(rx, ry, 0, rx, ry, rad);
+                rotGrad.addColorStop(0, 'rgba(15, 8, 5, 0.95)');
+                rotGrad.addColorStop(0.7, 'rgba(25, 15, 8, 0.6)');
+                rotGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = rotGrad; ctx.beginPath(); ctx.arc(rx, ry, rad, 0, Math.PI * 2); ctx.fill();
+            }
+
+            for (let i = 0; i < 35; i++) {
+                const mx = Math.random() * 512, my = Math.random() * 512, mrad = 8 + Math.random() * 18;
+                const moldGrad = ctx.createRadialGradient(mx, my, 0, mx, my, mrad);
+                moldGrad.addColorStop(0, moldColorHex);
+                moldGrad.addColorStop(0.8, 'rgba(60, 80, 50, 0.4)');
+                moldGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = moldGrad; ctx.beginPath(); ctx.arc(mx, my, mrad, 0, Math.PI * 2); ctx.fill();
+            }
+            return applyTextureSettings(new THREE.CanvasTexture(canvas));
+        }
+
+        // --- APPLY MATERIALS ---
+        const marbleTexture = createMarbleTexture();
+        const tileTexture = createTileTexture();
+        const tileBumpMap = createTileBumpMap();
+        const woodTextureDark = createWoodTexture(true);
+        const woodTextureLight = createWoodTexture(false);
+        const woodBumpMap = createWoodBumpMap();
+        const brushedMetalTexture = createBrushedMetalTexture();
+
+        const matMarble = new THREE.MeshPhysicalMaterial({
+            map: marbleTexture,
+            roughness: 0.12,
+            clearcoat: 0.95,
+            clearcoatRoughness: 0.08,
+            reflectivity: 0.9
+        });
+
+        const matDarkWood = new THREE.MeshStandardMaterial({
+            map: woodTextureDark,
+            bumpMap: woodBumpMap,
+            bumpScale: 0.012,
+            roughness: 0.45
+        });
+
+        const matLightWood = new THREE.MeshStandardMaterial({
+            map: woodTextureLight,
+            bumpMap: woodBumpMap,
+            bumpScale: 0.018,
+            roughness: 0.4
+        });
+
+        const matStainless = new THREE.MeshStandardMaterial({
+            color: 0xdddddd,
+            map: brushedMetalTexture,
+            metalness: 0.88,
+            roughness: 0.22
+        });
+
+        // Ingredient Materials
+        const matTomatoGood = new THREE.MeshPhysicalMaterial({ color: 0xeb3b5a, roughness: 0.18, clearcoat: 0.6 });
+        const matTomatoBad  = new THREE.MeshStandardMaterial({ map: createRottenTexture('#3b1010', 'rgba(90, 110, 50, 0.85)'), roughness: 0.8 });
+
+        const matAppleGood  = new THREE.MeshPhysicalMaterial({ color: 0xd63031, roughness: 0.12, clearcoat: 0.8 });
+        const matAppleBad   = new THREE.MeshStandardMaterial({ map: createRottenTexture('#222b0c', 'rgba(110, 130, 40, 0.85)'), roughness: 0.8 });
+
+        const matCheeseGood = new THREE.MeshStandardMaterial({ color: 0xf1c40f, roughness: 0.35 });
+        const matCheeseBad  = new THREE.MeshStandardMaterial({ map: createRottenTexture('#69550b', 'rgba(40, 90, 60, 0.85)'), roughness: 0.8 });
+
+        const matCarrotGood = new THREE.MeshPhysicalMaterial({ color: 0xe67e22, roughness: 0.3 });
+        const matCarrotBad  = new THREE.MeshStandardMaterial({ map: createRottenTexture('#2b180d', 'rgba(60, 80, 40, 0.85)'), roughness: 0.85 });
+
+        const matShroomCapGood  = new THREE.MeshStandardMaterial({ color: 0x8e583c, roughness: 0.28 });
+        const matShroomCapBad   = new THREE.MeshStandardMaterial({ map: createRottenTexture('#1d2733', 'rgba(70, 80, 90, 0.85)'), roughness: 0.9 });
+        const matShroomStemGood = new THREE.MeshStandardMaterial({ color: 0xf5f5dc, roughness: 0.35 });
+
+        const matBrocGood = new THREE.MeshStandardMaterial({ color: 0x27ae60, roughness: 0.55 });
+        const matBrocBad  = new THREE.MeshStandardMaterial({ map: createRottenTexture('#29332a', 'rgba(120, 130, 120, 0.85)'), roughness: 0.9 });
+
+        const matLemonGood = new THREE.MeshPhysicalMaterial({ color: 0xf1c40f, roughness: 0.2, clearcoat: 0.4 });
+        const matLemonBad  = new THREE.MeshStandardMaterial({ map: createRottenTexture('#45411b', 'rgba(120, 120, 120, 0.85)'), roughness: 0.9 });
+
+        const matEggplantGood = new THREE.MeshPhysicalMaterial({ color: 0x5e2d79, roughness: 0.08, clearcoat: 0.95 });
+        const matEggplantBad  = new THREE.MeshStandardMaterial({ map: createRottenTexture('#26161e', 'rgba(80, 70, 50, 0.85)'), roughness: 0.8 });
+
+        const matStemGood = new THREE.MeshStandardMaterial({ color: 0x20bf6b, roughness: 0.45 });
+        const matStemBad  = new THREE.MeshStandardMaterial({ color: 0x1b240a });
+
+        // --- GAME BOUNDARIES & INTERACTION GLOBALS ---
+        const colliders = [];
+        function addBoxCollider(minX, maxX, minZ, maxZ) {
+            colliders.push({ minX, maxX, minZ, maxZ });
+        }
+
+        const interactables = [];
+        const dropSurfaces = [];
+        let currentRoundIngredients = [];
+        let potMesh, soupMesh, steamParticles = [];
+        let heldObject = null;
+        let soupProgress = 0;
+
+        const spawnPositionsList = [
+            new THREE.Vector3(-1.4, 2.7, 1.8),
+            new THREE.Vector3(0.0, 2.7, 1.8),
+            new THREE.Vector3(1.4, 2.7, 1.8)
+        ];
+
+        const INGREDIENT_NAMES = {
+            tomato:   { good: "Fresh Vine Tomato", bad: "Spoiled Moldy Tomato" },
+            apple:    { good: "Crisp Red Apple", bad: "Rotten Apple" },
+            cheese:   { good: "Aged Swiss Cheese", bad: "Moldy Green Cheese" },
+            carrot:   { good: "Organic Farm Carrot", bad: "Slimy Rotting Carrot" },
+            mushroom: { good: "Wild Forest Mushroom", bad: "Fuzzy Moldy Mushroom" },
+            broccoli: { good: "Fresh Broccoli Crown", bad: "Withered Dry Broccoli" },
+            lemon:    { good: "Ripe Meyer Lemon", bad: "Decayed Grey Lemon" },
+            eggplant: { good: "Glossy Purple Eggplant", bad: "Squishy Spoiled Eggplant" }
+        };
+
+        // --- HIGH-POLY INGREDIENT GENERATOR ---
+        function createIngredientMesh(type, isGood) {
+            const group = new THREE.Group();
+
+            switch(type) {
+                case 'tomato': {
+                    const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 24), isGood ? matTomatoGood : matTomatoBad);
+                    body.scale.set(1, 0.88, 1); body.castShadow = true; group.add(body);
+                    
+                    const starShape = new THREE.Shape();
+                    for(let i=0; i<5; i++) {
+                        const a1 = (i * Math.PI * 2) / 5;
+                        const a2 = a1 + Math.PI / 5;
+                        starShape.lineTo(Math.cos(a1)*0.12, Math.sin(a1)*0.12);
+                        starShape.lineTo(Math.cos(a2)*0.04, Math.sin(a2)*0.04);
+                    }
+                    const starGeo = new THREE.ShapeGeometry(starShape);
+                    const star = new THREE.Mesh(starGeo, isGood ? matStemGood : matStemBad);
+                    star.rotation.x = -Math.PI / 2; star.position.y = 0.19; group.add(star);
+
+                    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.08, 8), isGood ? matStemGood : matStemBad);
+                    stem.position.y = 0.22; group.add(stem);
+                    break;
+                }
+                case 'apple': {
+                    const body = new THREE.Mesh(new THREE.SphereGeometry(0.21, 24, 24), isGood ? matAppleGood : matAppleBad);
+                    body.scale.set(1, 0.95, 1); body.castShadow = true; group.add(body);
+                    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.1, 8), isGood ? matStemGood : matStemBad);
+                    stem.position.set(0, 0.2, 0); stem.rotation.z = -0.15; group.add(stem);
+                    break;
+                }
+                case 'cheese': {
+                    const body = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.22, 0.3), isGood ? matCheeseGood : matCheeseBad);
+                    body.castShadow = true; group.add(body);
+                    break;
+                }
+                case 'carrot': {
+                    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.11, 0.48, 16), isGood ? matCarrotGood : matCarrotBad);
+                    body.rotation.z = Math.PI / 2.1; body.castShadow = true; group.add(body);
+                    const leafTuft = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.2, 8), isGood ? matStemGood : matStemBad);
+                    leafTuft.position.x = -0.26; leafTuft.rotation.z = -Math.PI / 2; group.add(leafTuft);
+                    break;
+                }
+                case 'mushroom': {
+                    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 16, 0, Math.PI * 2, 0, Math.PI / 2), isGood ? matShroomCapGood : matShroomCapBad);
+                    cap.position.y = 0.06; cap.castShadow = true; group.add(cap);
+                    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.18, 12), isGood ? matShroomStemGood : matShroomCapBad);
+                    stem.position.y = -0.02; group.add(stem);
+                    break;
+                }
+                case 'broccoli': {
+                    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.22, 12), isGood ? matStemGood : matBrocBad);
+                    group.add(stem);
+                    const brocMat = isGood ? matBrocGood : matBrocBad;
+                    for (let i = 0; i < 9; i++) {
+                        const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), brocMat);
+                        sphere.position.set((Math.random()-0.5)*0.18, 0.11 + Math.random()*0.09, (Math.random()-0.5)*0.18);
+                        sphere.castShadow = true; group.add(sphere);
+                    }
+                    break;
+                }
+                case 'lemon': {
+                    const body = new THREE.Mesh(new THREE.SphereGeometry(0.18, 20, 20), isGood ? matLemonGood : matLemonBad);
+                    body.scale.set(1.35, 0.9, 0.9); body.castShadow = true; group.add(body);
+                    break;
+                }
+                case 'eggplant': {
+                    const body = new THREE.Mesh(new THREE.SphereGeometry(0.2, 24, 24), isGood ? matEggplantGood : matEggplantBad);
+                    body.scale.set(0.85, 1.4, 0.85); body.castShadow = true; group.add(body);
+                    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.1, 8), isGood ? matStemGood : matStemBad);
+                    cap.position.y = 0.25; group.add(cap);
+                    break;
+                }
+            }
+
+            return group;
+        }
+
+        // --- BUILD KITCHEN ENVIRONMENT ---
+        function buildKitchen() {
+            const roomSize = 16; const wallHeight = 8;
+
+            const floorMat = new THREE.MeshStandardMaterial({
+                map: tileTexture,
+                bumpMap: tileBumpMap,
+                bumpScale: 0.025,
+                roughness: 0.3,
+                metalness: 0.1
+            });
+
+            // Smooth clean painted wall material (no wall texture)
+            const wallMat = new THREE.MeshStandardMaterial({ 
+                color: 0x1e232e, 
+                roughness: 0.5 
+            });
+
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomSize, roomSize), floorMat);
+            floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+            dropSurfaces.push(floor);
+
+            const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(roomSize, roomSize), wallMat);
+            ceiling.position.y = wallHeight; ceiling.rotation.x = Math.PI / 2; scene.add(ceiling);
+
+            const rugMat = new THREE.MeshStandardMaterial({ map: createRugTexture(), roughness: 0.85 });
+            const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 2.2), rugMat);
+            rug.rotation.x = -Math.PI / 2; rug.position.set(0, 0.01, 3.2); rug.receiveShadow = true; scene.add(rug);
+
+            const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 0.6, 24), matStainless);
+            lamp.position.set(0, 7.5, 0.5); scene.add(lamp);
+
+            const wallGeo = new THREE.PlaneGeometry(roomSize, wallHeight);
+            
+            const backWall = new THREE.Mesh(wallGeo, wallMat);
+            backWall.position.set(0, wallHeight/2, -roomSize/2); backWall.receiveShadow = true; scene.add(backWall);
+
+            const frontWall = new THREE.Mesh(wallGeo, wallMat);
+            frontWall.position.set(0, wallHeight/2, roomSize/2); frontWall.rotation.y = Math.PI; scene.add(frontWall);
+
+            const rightWall = new THREE.Mesh(wallGeo, wallMat);
+            rightWall.position.set(roomSize/2, wallHeight/2, 0); rightWall.rotation.y = -Math.PI / 2; rightWall.receiveShadow = true; scene.add(rightWall);
+
+            const leftWall = new THREE.Mesh(wallGeo, wallMat);
+            leftWall.position.set(-roomSize/2, wallHeight/2, 0); leftWall.rotation.y = Math.PI / 2; leftWall.receiveShadow = true; scene.add(leftWall);
+
+            const windowFrame = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4.0, 5.5), matStainless);
+            windowFrame.position.set(-7.9, 4.5, -2); scene.add(windowFrame);
+
+            const windowBackdropMat = new THREE.MeshBasicMaterial({ map: createWindowViewTexture() });
+            const windowBackdrop = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 3.8), windowBackdropMat);
+            windowBackdrop.position.set(-8.1, 4.5, -2); windowBackdrop.rotation.y = Math.PI / 2; scene.add(windowBackdrop);
+
+            const counterBase = new THREE.Mesh(new THREE.BoxGeometry(10, 2.4, 2.2), matDarkWood);
+            counterBase.position.set(-1, 1.2, -6.8); counterBase.castShadow = true; counterBase.receiveShadow = true; scene.add(counterBase);
+
+            const counterTop = new THREE.Mesh(new THREE.BoxGeometry(10.2, 0.2, 2.4), matMarble);
+            counterTop.position.set(-1, 2.5, -6.8); counterTop.castShadow = true; counterTop.receiveShadow = true; scene.add(counterTop);
+            dropSurfaces.push(counterTop);
+
+            addBoxCollider(-6.2, 4.2, -8.0, -5.5);
+
+            const upperCabinet = new THREE.Mesh(new THREE.BoxGeometry(10, 2.0, 1.4), matDarkWood);
+            upperCabinet.position.set(-1, 6.0, -7.2); upperCabinet.castShadow = true; scene.add(upperCabinet);
+
+            const fridge = new THREE.Mesh(new THREE.BoxGeometry(2.6, 5.8, 2.6), matStainless);
+            fridge.position.set(6.2, 2.9, -6.6); fridge.castShadow = true; fridge.receiveShadow = true; scene.add(fridge);
+
+            addBoxCollider(4.8, 7.6, -8.0, -5.2);
+
+            const islandBase = new THREE.Mesh(new THREE.BoxGeometry(5.0, 2.4, 2.8), matDarkWood);
+            islandBase.position.set(0, 1.2, 0.5); islandBase.castShadow = true; islandBase.receiveShadow = true; scene.add(islandBase);
+
+            const islandTop = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.2, 3.2), matMarble);
+            islandTop.position.set(0, 2.5, 0.5); islandTop.castShadow = true; islandTop.receiveShadow = true; scene.add(islandTop);
+            dropSurfaces.push(islandTop);
+
+            addBoxCollider(-2.8, 2.8, -1.2, 2.2);
+
+            const cuttingBoard = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 0.8), matLightWood);
+            cuttingBoard.position.set(1.8, 2.62, 0.3); cuttingBoard.rotation.y = -0.2; cuttingBoard.castShadow = true; cuttingBoard.receiveShadow = true;
+            scene.add(cuttingBoard);
+
+            const potGroup = new THREE.Group();
+            const potBody = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.7, 0.65, 0.7, 32, 1, true),
+                new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.85, roughness: 0.2, side: THREE.DoubleSide })
+            );
+            potBody.castShadow = true; potGroup.add(potBody);
+
+            const potBottom = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.65, 0.65, 0.05, 32),
+                new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.2 })
+            );
+            potBottom.position.y = -0.32; potGroup.add(potBottom);
+
+            const handle1 = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 12, 24), matStainless);
+            handle1.position.set(0.72, 0.15, 0); handle1.rotation.y = Math.PI / 2; potGroup.add(handle1);
+            const handle2 = handle1.clone(); handle2.position.set(-0.72, 0.15, 0); potGroup.add(handle2);
+
+            soupMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.66, 0.66, 0.02, 32),
+                new THREE.MeshPhysicalMaterial({ color: 0x3a2d1d, roughness: 0.1, clearcoat: 0.9 })
+            );
+            soupMesh.position.y = 0.15; potGroup.add(soupMesh);
+
+            potGroup.position.set(0, 2.95, 0.5); scene.add(potGroup);
+
+            const particleGeo = new THREE.SphereGeometry(0.04, 8, 8);
+            const particleMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 });
+
+            for(let i=0; i<18; i++) {
+                const p = new THREE.Mesh(particleGeo, particleMat);
+                p.position.set((Math.random()-0.5)*0.8, 3.1 + Math.random()*0.8, 0.5 + (Math.random()-0.5)*0.8);
+                p.userData = { speedY: 0.008 + Math.random()*0.008, startY: 3.1 };
+                scene.add(p);
+                steamParticles.push(p);
+            }
+
+            const potHitbox = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.85, 0.85, 0.8, 16),
+                new THREE.MeshBasicMaterial({ visible: false })
+            );
+            potHitbox.position.copy(potGroup.position);
+            potHitbox.userData = { isPot: true, name: 'Cooking Pot' };
+            scene.add(potHitbox);
+            interactables.push(potHitbox);
+        }
+
+        buildKitchen();
+
+        // --- ROUND SPAWNING LOGIC ---
+        function clearRoundIngredients() {
+            currentRoundIngredients.forEach(group => {
+                if (group.parent) group.parent.remove(group);
+                const idx = interactables.indexOf(group);
+                if (idx !== -1) interactables.splice(idx, 1);
+            });
+            currentRoundIngredients = [];
+        }
+
+        function spawnRoundIngredients() {
+            clearRoundIngredients();
+
+            const allTypes = Object.keys(INGREDIENT_NAMES);
+            const shuffled = allTypes.sort(() => 0.5 - Math.random());
+            const chosenTypes = shuffled.slice(0, 3);
+            const goodIndex = Math.floor(Math.random() * 3);
+
+            chosenTypes.forEach((type, index) => {
+                const isGood = (index === goodIndex);
+                const group = createIngredientMesh(type, isGood);
+                const name = isGood ? INGREDIENT_NAMES[type].good : INGREDIENT_NAMES[type].bad;
+
+                const pos = spawnPositionsList[index];
+                group.position.copy(pos);
+
+                group.userData = {
+                    isIngredient: true,
+                    type: type,
+                    isGood: isGood,
+                    name: name,
+                    homePos: pos.clone()
+                };
+
+                scene.add(group);
+                interactables.push(group);
+                currentRoundIngredients.push(group);
+            });
+        }
+
+        function updateUI() {
+            document.getElementById('progress-display').innerText = `${soupProgress} / 5`;
+            document.getElementById('held-display').innerText = heldObject ? heldObject.userData.name : "None";
+        }
+
+        // --- RAYCASTING & INTERACTION ---
+        const raycaster = new THREE.Raycaster();
+        const centerPoint = new THREE.Vector2(0, 0);
+        const promptEl = document.getElementById('interaction-prompt');
+        const crosshairEl = document.getElementById('crosshair');
+        const gameBanner = document.getElementById('game-banner');
+
+        function updateInteraction() {
+            if (!isLocked) {
+                promptEl.style.display = 'none';
+                crosshairEl.classList.remove('active');
+                return;
+            }
+
+            raycaster.setFromCamera(centerPoint, camera);
+            
+            if (heldObject) {
+                crosshairEl.classList.add('active');
+                const targets = interactables.filter(o => o.userData.isPot);
+                const intersects = raycaster.intersectObjects(targets);
+
+                if (intersects.length > 0 && intersects[0].distance < 7.0) {
+                    promptEl.innerText = `[CLICK] Add ${heldObject.userData.name} to Pot`;
+                } else {
+                    promptEl.innerText = `[CLICK] Drop ${heldObject.userData.name}`;
+                }
+                promptEl.style.display = 'block';
+                return;
+            }
+
+            const targets = [];
+            interactables.forEach(obj => {
+                if (obj.userData.isIngredient && obj.visible && obj.parent === scene) {
+                    obj.children.forEach(c => { c.userData.parentGroup = obj; targets.push(c); });
+                }
+            });
+
+            const intersects = raycaster.intersectObjects(targets);
+
+            if (intersects.length > 0 && intersects[0].distance < 7.0) {
+                const hit = intersects[0].object;
+                const targetObj = hit.userData.parentGroup || hit;
+
+                crosshairEl.classList.add('active');
+                promptEl.innerText = `[CLICK] Pick up ${targetObj.userData.name}`;
+                promptEl.style.display = 'block';
+            } else {
+                crosshairEl.classList.remove('active');
+                promptEl.style.display = 'none';
+            }
+        }
+
+        function onInteract() {
+            if (!isLocked) return;
+
+            raycaster.setFromCamera(centerPoint, camera);
+
+            if (heldObject) {
+                const potTargets = interactables.filter(o => o.userData.isPot);
+                const intersectsPot = raycaster.intersectObjects(potTargets);
+
+                if (intersectsPot.length > 0 && intersectsPot[0].distance < 7.0) {
+                    cookIngredient(heldObject);
+                } else {
+                    dropIngredient();
+                }
+                return;
+            }
+
+            const targets = [];
+            interactables.forEach(obj => {
+                if (obj.userData.isIngredient && obj.visible && obj.parent === scene) {
+                    obj.children.forEach(c => { c.userData.parentGroup = obj; targets.push(c); });
+                }
+            });
+
+            const intersects = raycaster.intersectObjects(targets);
+
+            if (intersects.length > 0 && intersects[0].distance < 7.0) {
+                const hit = intersects[0].object;
+                const targetObj = hit.userData.parentGroup || hit;
+
+                heldObject = targetObj;
+                scene.remove(heldObject);
+                camera.add(heldObject);
+                heldObject.position.set(0.55, -0.38, -0.85);
+                heldObject.rotation.set(0.2, 0.4, 0);
+                updateUI();
+            }
+        }
+
+        function dropIngredient() {
+            if (!heldObject) return;
+
+            const item = heldObject;
+            camera.remove(item);
+            scene.add(item);
+
+            raycaster.setFromCamera(centerPoint, camera);
+            const intersects = raycaster.intersectObjects(dropSurfaces);
+
+            if (intersects.length > 0 && intersects[0].distance < 8.0) {
+                const hitPoint = intersects[0].point;
+                item.position.copy(hitPoint);
+                item.position.y += 0.15;
+            } else {
+                const dropPos = new THREE.Vector3();
+                camera.getWorldPosition(dropPos);
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
+                dropPos.add(dir.multiplyScalar(1.5));
+                dropPos.y = Math.max(dropPos.y, 2.6);
+                item.position.copy(dropPos);
+            }
+
+            item.rotation.set(0, Math.random() * Math.PI * 2, 0);
+            heldObject = null;
+            updateUI();
+        }
+
+        function cookIngredient(item) {
+            camera.remove(item);
+            item.visible = false;
+
+            if (item.userData.isGood) {
+                soupProgress++;
+                
+                const soupColors = [0x3a2d1d, 0xd35400, 0xe67e22, 0xf39c12, 0x27ae60, 0x1abc9c];
+                soupMesh.material.color.setHex(soupColors[soupProgress]);
+
+                if (soupProgress < 5) {
+                    gameBanner.innerText = `✨ EXCELLENT! ${item.userData.name} added! (${soupProgress}/5) Next round loading...`;
+                    gameBanner.className = "banner-success";
+                    gameBanner.style.display = "block";
+
+                    heldObject = null;
+                    updateUI();
+
+                    setTimeout(() => {
+                        if (soupProgress < 5 && soupProgress > 0) {
+                            gameBanner.style.display = "none";
+                            spawnRoundIngredients();
+                        }
+                    }, 1400);
+
+                } else {
+                    gameBanner.innerText = `🎉 VICTORY! Gourmet 5-Ingredient Soup Cooked Perfectly! Press [R] to Restart.`;
+                    gameBanner.className = "banner-success";
+                    gameBanner.style.display = "block";
+                    heldObject = null;
+                    updateUI();
+                }
+
+            } else {
+                soupMesh.material.color.setHex(0x192a14);
+                soupProgress = 0;
+                gameBanner.innerText = `🤢 SPOILED! ${item.userData.name} ruined the broth! Resetting to 0/5. Press [R] to retry.`;
+                gameBanner.className = "banner-fail";
+                gameBanner.style.display = "block";
+
+                heldObject = null;
+                updateUI();
+            }
+        }
+
+        function resetGame() {
+            soupProgress = 0;
+            soupMesh.material.color.setHex(0x3a2d1d);
+            gameBanner.style.display = 'none';
+
+            if (heldObject) {
+                camera.remove(heldObject);
+                heldObject = null;
+            }
+
+            spawnRoundIngredients();
+            updateUI();
+        }
+
+        resetGame();
+
+        document.addEventListener('click', onInteract);
+
+        // --- CONTROLS & MOVEMENT PHYSICS ---
+        let isLocked = false;
+        let yaw = 0; let pitch = 0;
+        const sensitivity = 0.0022;
+
+        const velocity = new THREE.Vector3();
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        let canJump = false, isSprinting = false;
+
+        const playerHeight = 4.7;
+        let playerY = playerHeight;
+        let verticalVelocity = 0;
+        const gravity = 28;
+        const jumpStrength = 11;
+
+        const blocker = document.getElementById('blocker');
+
+        blocker.addEventListener('click', () => {
+            document.body.requestPointerLock();
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === document.body) {
+                isLocked = true;
+                blocker.style.display = 'none';
+            } else {
+                isLocked = false;
+                blocker.style.display = 'flex';
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isLocked) return;
+
+            yaw -= (e.movementX || 0) * sensitivity;
+            pitch -= (e.movementY || 0) * sensitivity;
+
+            pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, pitch));
+
+            const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+            euler.x = pitch; euler.y = yaw;
+            camera.quaternion.setFromEuler(euler);
+        });
+
+        const onKeyDown = (e) => {
+            switch (e.code) {
+                case 'KeyW': case 'ArrowUp': moveForward = true; break;
+                case 'KeyS': case 'ArrowDown': moveBackward = true; break;
+                case 'KeyA': case 'ArrowLeft': moveLeft = true; break;
+                case 'KeyD': case 'ArrowRight': moveRight = true; break;
+                case 'KeyR': resetGame(); break;
+                case 'Space':
+                    if (canJump) {
+                        verticalVelocity = jumpStrength;
+                        canJump = false;
+                    }
+                    break;
+                case 'ShiftLeft': case 'ShiftRight': isSprinting = true; break;
+            }
+        };
+
+        const onKeyUp = (e) => {
+            switch (e.code) {
+                case 'KeyW': case 'ArrowUp': moveForward = false; break;
+                case 'KeyS': case 'ArrowDown': moveBackward = false; break;
+                case 'KeyA': case 'ArrowLeft': moveLeft = false; break;
+                case 'KeyD': case 'ArrowRight': moveRight = false; break;
+                case 'ShiftLeft': case 'ShiftRight': isSprinting = false; break;
+            }
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function checkCollisions(newX, newZ) {
+            const playerRadius = 0.6;
+            const maxRoom = 7.2;
+
+            newX = Math.max(-maxRoom, Math.min(maxRoom, newX));
+            newZ = Math.max(-maxRoom, Math.min(maxRoom, newZ));
+
+            for (let box of colliders) {
+                if (newX + playerRadius > box.minX && newX - playerRadius < box.maxX &&
+                    newZ + playerRadius > box.minZ && newZ - playerRadius < box.maxZ) {
+                    
+                    const overlapLeft = (newX + playerRadius) - box.minX;
+                    const overlapRight = box.maxX - (newX - playerRadius);
+                    const overlapTop = (newZ + playerRadius) - box.minZ;
+                    const overlapBottom = box.maxZ - (newZ - playerRadius);
+
+                    const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+
+                    if (minOverlap === overlapLeft) newX = box.minX - playerRadius;
+                    else if (minOverlap === overlapRight) newX = box.maxX + playerRadius;
+                    else if (minOverlap === overlapTop) newZ = box.minZ - playerRadius;
+                    else if (minOverlap === overlapBottom) newZ = box.maxZ + playerRadius;
+                }
+            }
+
+            return { x: newX, z: newZ };
+        }
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = Math.min(clock.getDelta(), 0.1);
+
+            steamParticles.forEach(p => {
+                p.position.y += p.userData.speedY;
+                p.scale.addScalar(0.005);
+                p.material.opacity -= 0.003;
+                if(p.position.y > 4.2 || p.material.opacity <= 0) {
+                    p.position.set((Math.random()-0.5)*0.6, p.userData.startY, 0.5 + (Math.random()-0.5)*0.6);
+                    p.scale.set(1, 1, 1);
+                    p.material.opacity = 0.25;
+                }
+            });
+
+            if (isLocked) {
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+
+                const speed = isSprinting ? 35.0 : 20.0;
+                const dirZ = Number(moveForward) - Number(moveBackward);
+                const dirX = Number(moveRight) - Number(moveLeft);
+
+                if (moveForward || moveBackward) velocity.z -= dirZ * speed * delta;
+                if (moveLeft || moveRight) velocity.x -= dirX * speed * delta;
+
+                const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+                const side = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+                let nextX = camera.position.x + (forward.x * -velocity.z + side.x * -velocity.x) * delta;
+                let nextZ = camera.position.z + (forward.z * -velocity.z + side.z * -velocity.x) * delta;
+
+                const resolvedPos = checkCollisions(nextX, nextZ);
+                camera.position.x = resolvedPos.x;
+                camera.position.z = resolvedPos.z;
+
+                verticalVelocity -= gravity * delta;
+                playerY += verticalVelocity * delta;
+
+                if (playerY <= playerHeight) {
+                    verticalVelocity = 0;
+                    playerY = playerHeight;
+                    canJump = true;
+                }
+
+                camera.position.y = playerY;
+
+                updateInteraction();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
