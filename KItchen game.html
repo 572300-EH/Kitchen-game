@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cozy Kitchen Explorer - Ultra Textures</title>
+    <title>Cozy Kitchen Explorer - Infinite Arcade Edition</title>
     <style>
         * {
             box-sizing: border-box;
@@ -200,6 +200,25 @@
             color: white;
             border: 1px solid #e74c3c;
         }
+
+        /* Animated Floating 3D Projection Text Effect */
+        .floating-text {
+            position: absolute;
+            font-weight: 900;
+            font-size: 1.8rem;
+            pointer-events: none;
+            z-index: 100;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 20px currentColor;
+            animation: floatUp 1.2s forwards cubic-bezier(0.1, 0.8, 0.3, 1);
+            transform: translate(-50%, -50%);
+            letter-spacing: 1.5px;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -30px) scale(1.25); }
+            100% { opacity: 0; transform: translate(-50%, -100px) scale(0.9); }
+        }
     </style>
 </head>
 <body>
@@ -211,23 +230,23 @@
 
     <div id="blocker">
         <div id="instructions">
-            <h1>Gourmet Kitchen</h1>
-            <p>Craft a 5-Ingredient Masterpiece! Inspect the three ingredients on the island counter (<b>1 Fresh, 2 Spoiled</b>).</p>
-            <p>Pick up fresh ingredients and drop them into the boiling pot. Avoid spoiled ones!</p>
+            <h1>Arcade Kitchen</h1>
+            <p>Build the ultimate cooking streak! Inspect the ingredients on the island counter (<b>1 Fresh, 2 Spoiled</b>).</p>
+            <p>Pick up fresh ingredients and drop them into the pot to extend your streak. Avoid spoiled ones!</p>
             <br>
             <p>
                 <span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> - Move<br>
                 <span class="key">MOUSE</span> - Look Around<br>
                 <span class="key">LEFT CLICK</span> - Interact / Pick / Place<br>
-                <span class="key">R</span> - Restart Game<br>
+                <span class="key">R</span> - Restart Streak<br>
                 <span class="key">ESC</span> - Pause
             </p>
-            <div class="click-prompt">[ CLICK TO START COOKING ]</div>
+            <div class="click-prompt">[ CLICK TO START PLAYING ]</div>
         </div>
     </div>
 
     <div id="ui-panel">
-        PROGRESS: <span id="progress-display">0 / 5</span> Fresh Ingredients &nbsp;|&nbsp; HELD: <span id="held-display" style="color: #fff;">None</span>
+        STREAK: <span id="score-display" style="color: #2ecc71;">0</span> &nbsp;|&nbsp; BEST: <span id="highscore-display" style="color: #fff;">0</span> &nbsp;|&nbsp; HELD: <span id="held-display" style="color: #fff;">None</span>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -297,7 +316,6 @@
         // --- HIGH-FIDELITY PROCEDURAL TEXTURES ---
         // ==========================================
 
-        // 1. ORGANIC MARBLE (1024x1024 Multi-pass noise veins)
         function createMarbleTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 1024; canvas.height = 1024;
@@ -341,7 +359,6 @@
             return applyTextureSettings(new THREE.CanvasTexture(canvas));
         }
 
-        // 2. REALISTIC SLATE FLOOR TILES & BUMP (1024x1024)
         function createTileTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 1024; canvas.height = 1024;
@@ -386,7 +403,6 @@
             return applyTextureSettings(new THREE.CanvasTexture(canvas), 4, 4);
         }
 
-        // 3. ORGANIC WOOD GRAIN
         function createWoodTexture(isDark = true) {
             const canvas = document.createElement('canvas');
             canvas.width = 1024; canvas.height = 1024;
@@ -439,7 +455,6 @@
             return applyTextureSettings(new THREE.CanvasTexture(canvas));
         }
 
-        // 4. FINE WOVEN FABRIC RUG
         function createRugTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 1024; canvas.height = 1024;
@@ -463,7 +478,6 @@
             return applyTextureSettings(new THREE.CanvasTexture(canvas));
         }
 
-        // 5. MICRO-BRUSHED METAL
         function createBrushedMetalTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 1024; canvas.height = 1024;
@@ -477,7 +491,6 @@
             return applyTextureSettings(new THREE.CanvasTexture(canvas));
         }
 
-        // 6. WINDOW VIEW
         function createWindowViewTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 1024; canvas.height = 1024;
@@ -504,7 +517,6 @@
             return applyTextureSettings(new THREE.CanvasTexture(canvas));
         }
 
-        // 7. ORGANIC DECAY & MOLD TEXTURE
         function createRottenTexture(baseColorHex, moldColorHex) {
             const canvas = document.createElement('canvas');
             canvas.width = 512; canvas.height = 512;
@@ -607,9 +619,13 @@
         const interactables = [];
         const dropSurfaces = [];
         let currentRoundIngredients = [];
-        let potMesh, soupMesh, steamParticles = [];
+        let potGroup, potMesh, soupMesh, steamParticles = [], splashParticles = [];
+        let potBounceTime = 0;
         let heldObject = null;
-        let soupProgress = 0;
+        
+        // ARCADE INFINITE GAMEPLAY STATE
+        let currentStreak = 0;
+        let highScore = 0;
 
         const spawnPositionsList = [
             new THREE.Vector3(-1.4, 2.7, 1.8),
@@ -718,7 +734,6 @@
                 metalness: 0.1
             });
 
-            // Smooth clean painted wall material (no wall texture)
             const wallMat = new THREE.MeshStandardMaterial({ 
                 color: 0x1e232e, 
                 roughness: 0.5 
@@ -789,7 +804,7 @@
             cuttingBoard.position.set(1.8, 2.62, 0.3); cuttingBoard.rotation.y = -0.2; cuttingBoard.castShadow = true; cuttingBoard.receiveShadow = true;
             scene.add(cuttingBoard);
 
-            const potGroup = new THREE.Group();
+            potGroup = new THREE.Group();
             const potBody = new THREE.Mesh(
                 new THREE.CylinderGeometry(0.7, 0.65, 0.7, 32, 1, true),
                 new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.85, roughness: 0.2, side: THREE.DoubleSide })
@@ -837,7 +852,86 @@
 
         buildKitchen();
 
-        // --- ROUND SPAWNING LOGIC ---
+        // --- VISUAL IMPACT EFFECTS SYSTEM ---
+        function triggerPotEffects(isGood, displayStreak) {
+            potBounceTime = 1.0;
+
+            const splashLight = new THREE.PointLight(isGood ? 0x2ecc71 : 0xe74c3c, 6, 5);
+            splashLight.position.set(0, 3.4, 0.5);
+            scene.add(splashLight);
+
+            let flashTimer = 0;
+            const flashInterval = setInterval(() => {
+                flashTimer += 0.05;
+                splashLight.intensity = Math.max(0, 6 * (1 - flashTimer / 0.45));
+                if (flashTimer >= 0.45) {
+                    scene.remove(splashLight);
+                    clearInterval(flashInterval);
+                }
+            }, 30);
+
+            const count = isGood ? 35 : 25;
+            const pGeom = new THREE.SphereGeometry(isGood ? 0.035 : 0.05, 8, 8);
+
+            for (let i = 0; i < count; i++) {
+                const color = isGood 
+                    ? (Math.random() > 0.3 ? 0xf1c40f : 0x2ecc71) 
+                    : (Math.random() > 0.5 ? 0x8e44ad : 0x27332a);
+
+                const mat = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.95
+                });
+
+                const p = new THREE.Mesh(pGeom, mat);
+                p.position.set(
+                    (Math.random() - 0.5) * 0.4,
+                    3.15,
+                    0.5 + (Math.random() - 0.5) * 0.4
+                );
+
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 0.03 + Math.random() * 0.065;
+                p.userData = {
+                    vx: Math.cos(angle) * speed,
+                    vy: 0.09 + Math.random() * 0.12,
+                    vz: Math.sin(angle) * speed,
+                    life: 1.0,
+                    decay: 0.02 + Math.random() * 0.025
+                };
+
+                scene.add(p);
+                splashParticles.push(p);
+            }
+
+            // Floating text display with dynamic streak multiplier readout
+            const label = isGood ? `+1 STREAK! (x${displayStreak})` : "❌ SPOILED!";
+            spawnFloatingText(label, isGood ? "#2ecc71" : "#e74c3c");
+        }
+
+        function spawnFloatingText(text, color) {
+            const potPos = new THREE.Vector3(0, 3.4, 0.5);
+            potPos.project(camera);
+
+            const x = (potPos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-(potPos.y * 0.5) + 0.5) * window.innerHeight;
+
+            const div = document.createElement('div');
+            div.className = 'floating-text';
+            div.style.left = `${x}px`;
+            div.style.top = `${y}px`;
+            div.style.color = color;
+            div.innerText = text;
+
+            document.body.appendChild(div);
+
+            setTimeout(() => {
+                div.remove();
+            }, 1200);
+        }
+
+        // --- INFINITE SPAWNING LOGIC ---
         function clearRoundIngredients() {
             currentRoundIngredients.forEach(group => {
                 if (group.parent) group.parent.remove(group);
@@ -878,7 +972,8 @@
         }
 
         function updateUI() {
-            document.getElementById('progress-display').innerText = `${soupProgress} / 5`;
+            document.getElementById('score-display').innerText = currentStreak;
+            document.getElementById('highscore-display').innerText = highScore;
             document.getElementById('held-display').innerText = heldObject ? heldObject.userData.name : "None";
         }
 
@@ -1006,49 +1101,56 @@
             camera.remove(item);
             item.visible = false;
 
-            if (item.userData.isGood) {
-                soupProgress++;
-                
-                const soupColors = [0x3a2d1d, 0xd35400, 0xe67e22, 0xf39c12, 0x27ae60, 0x1abc9c];
-                soupMesh.material.color.setHex(soupColors[soupProgress]);
+            const isGood = item.userData.isGood;
 
-                if (soupProgress < 5) {
-                    gameBanner.innerText = `✨ EXCELLENT! ${item.userData.name} added! (${soupProgress}/5) Next round loading...`;
-                    gameBanner.className = "banner-success";
-                    gameBanner.style.display = "block";
-
-                    heldObject = null;
-                    updateUI();
-
-                    setTimeout(() => {
-                        if (soupProgress < 5 && soupProgress > 0) {
-                            gameBanner.style.display = "none";
-                            spawnRoundIngredients();
-                        }
-                    }, 1400);
-
-                } else {
-                    gameBanner.innerText = `🎉 VICTORY! Gourmet 5-Ingredient Soup Cooked Perfectly! Press [R] to Restart.`;
-                    gameBanner.className = "banner-success";
-                    gameBanner.style.display = "block";
-                    heldObject = null;
-                    updateUI();
+            if (isGood) {
+                currentStreak++;
+                if (currentStreak > highScore) {
+                    highScore = currentStreak;
                 }
 
+                triggerPotEffects(true, currentStreak);
+
+                // Continuous infinite hue-cycling broth
+                const hue = ((currentStreak * 45) % 360) / 360;
+                soupMesh.material.color.setHSL(hue, 0.65, 0.35);
+
+                gameBanner.innerText = `✨ EXCELLENT! ${item.userData.name}! (Streak: ${currentStreak})`;
+                gameBanner.className = "banner-success";
+                gameBanner.style.display = "block";
+
+                heldObject = null;
+                updateUI();
+
+                setTimeout(() => {
+                    gameBanner.style.display = "none";
+                    spawnRoundIngredients();
+                }, 1000);
+
             } else {
-                soupMesh.material.color.setHex(0x192a14);
-                soupProgress = 0;
-                gameBanner.innerText = `🤢 SPOILED! ${item.userData.name} ruined the broth! Resetting to 0/5. Press [R] to retry.`;
+                triggerPotEffects(false, 0);
+
+                soupMesh.material.color.setHex(0x192a14); // Rotten dark green
+                const lastStreak = currentStreak;
+                currentStreak = 0;
+
+                gameBanner.innerText = `🤢 SPOILED! ${item.userData.name} ruined the streak at ${lastStreak}! Resetting...`;
                 gameBanner.className = "banner-fail";
                 gameBanner.style.display = "block";
 
                 heldObject = null;
                 updateUI();
+
+                setTimeout(() => {
+                    gameBanner.style.display = "none";
+                    soupMesh.material.color.setHex(0x3a2d1d); // Reset broth color
+                    spawnRoundIngredients();
+                }, 1800);
             }
         }
 
         function resetGame() {
-            soupProgress = 0;
+            currentStreak = 0;
             soupMesh.material.color.setHex(0x3a2d1d);
             gameBanner.style.display = 'none';
 
@@ -1180,6 +1282,7 @@
 
             const delta = Math.min(clock.getDelta(), 0.1);
 
+            // Steam particle loop
             steamParticles.forEach(p => {
                 p.position.y += p.userData.speedY;
                 p.scale.addScalar(0.005);
@@ -1190,6 +1293,35 @@
                     p.material.opacity = 0.25;
                 }
             });
+
+            // Splash Particle Physics Update
+            for (let i = splashParticles.length - 1; i >= 0; i--) {
+                const p = splashParticles[i];
+                p.position.x += p.userData.vx;
+                p.position.y += p.userData.vy;
+                p.position.z += p.userData.vz;
+
+                p.userData.vy -= 0.0045; // Gravity
+                p.userData.life -= p.userData.decay;
+                p.material.opacity = Math.max(0, p.userData.life);
+                p.scale.multiplyScalar(0.965);
+
+                if (p.userData.life <= 0) {
+                    scene.remove(p);
+                    splashParticles.splice(i, 1);
+                }
+            }
+
+            // Pot Impact Bounce/Wobble Animation
+            if (potBounceTime > 0) {
+                potBounceTime -= delta * 3.8;
+                const phase = Math.sin(potBounceTime * Math.PI * 4);
+                const scaleY = 1.0 + phase * 0.12 * Math.max(0, potBounceTime);
+                const scaleXZ = 1.0 - phase * 0.08 * Math.max(0, potBounceTime);
+                potGroup.scale.set(scaleXZ, scaleY, scaleXZ);
+            } else {
+                potGroup.scale.set(1, 1, 1);
+            }
 
             if (isLocked) {
                 velocity.x -= velocity.x * 10.0 * delta;
